@@ -5,7 +5,14 @@
   <!-- style -->
   <style type="text/css">
     html, body { height: 100%; margin: 0; padding: 0; }
-    #map { height: 100%; }
+    hr { background: #89d7ed; height: 1px; margin: 20px 0 20px 0; border: none; }
+    #map { bottom:0px; height: 100%; left: 300px; position: absolute; right: 0px; }
+    #toggle-listings { width: 100px; }
+    #zoom-to-area-text { right: 300px; }
+    #info-window { width: 400px; height: 250px; }
+    #pano { display: inline-block; width: 200px; height: 200px; }
+    #aside { position: absolute; display: inline-block; padding: 0 12px; }
+    .horis-div { margin: 8px 0; }
   </style>
 
   <!-- libs -->
@@ -19,16 +26,26 @@
 </head>
 <body>
   <div>
-    <input id="toggle-listings" type="button" data-bind="toggleClick: listings" value="Show Listings" >
+    <h1 id="title">Iceland</h1>
+    <input id="toggle-listings" type="button" data-bind="toggleClick: listings" value="Hide All Listings" >
+    <span class="horis-div">|</span>
+    <!-- ko if: markers-->
+    <select id="locations" data-bind="options: markers, optionsText: 'title', value: selectedLocation,  optionsCaption: 'Choose...'">
+    </select>
+    <!-- /ko -->
 
+    <hr>
+    <div>
+      <input id="zoom-to-area-text" type="text" placeholder="Enter your favorite area!">
+      <input id="zoom-to-area" type="button" value="Zoom">
+    </div>
   </div>
   <div id="map"></div>
-
   <!-- main -->
   <script type="text/javascript" src="src/main.js"></script>
   <!-- map -->
   <script async defer
-    src="https://maps.googleapis.com/maps/api/js?key=AIzaSyDTgPoU3o41rELpgWKci4syG3smksMU7vw&v=3&callback=googleMapInit">
+    src="https://maps.googleapis.com/maps/api/js?libraries=places,geometry?key=AIzaSyDS40-0C15e1ODE5HQSyGz3Gbbs3VtmcSc&v=3&callback=googleMapInit&region=IS">
   </script>
 </body>
 </html>
