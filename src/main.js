@@ -37,23 +37,98 @@ var googleMapInit = (async function(){
     }
     obj.fitBounds = function(map){
       map.fitBounds(this.bounds);
+
     }.bind(obj, obj.map);
 
     obj.selectedLocation = ko.observable();
     obj.selectedLocation.subscribe( function(selectedMarker) {
       if(!selectedMarker) return;
-      this.listings(false);
       this.hideListings();
       this.registerBounds();
       this.showListing(selectedMarker, this.map);
       this.fitBounds();
       this.map.setZoom(12);
+      this.setInfoWindowContent(selectedMarker);
     }, obj);
 
-    // Init Markers and window
+    // Init Window
     obj.infowindow = new google.maps.InfoWindow({ maxWidth: 525 });
+    obj.infowindow.addListener('closeclick', function() {
+      obj.infowindow.marker = null;
+    });
+
+    obj.streetViewService = new google.maps.StreetViewService();
+
+    obj.setInfoWindowContent = async function (marker) {
+      var infowindow = this.infowindow;
+      if (infowindow.marker != marker) {
+        infowindow.marker = marker;
+        var title = '<h4 id="title">%data%</h4>';
+        var pano = '<div id="pano"></div>';
+        var aside = '<div id="aside">';
+        //
+        title = title.replace('%data%', marker.title);
+        //
+        var wikiRequestTimeout = setTimeout(function() {
+          aside = "<div>failed to get wikipedia resources</div>";
+          infowindow.setContent('<div id="info-window">'+title+'<div>'+pano+aside+'</div></div>');
+        }, 2500);
+
+        // Await the wiki
+        await $.ajax('https://en.wikipedia.org/w/api.php?action=opensearch&search='+marker.title+'&format=json',
+        {
+          dataType: "jsonp",
+          success: function (result){
+            var response = result[1];
+            if(response && response.length !== 0){
+              clearTimeout(wikiRequestTimeout);
+              response.forEach(function(article){
+                var url = 'http://en.wikipedia.org/wiki/'+article;
+                aside = aside.concat('<li><a href="'+url+'">'+article+'</a></li>');
+              });
+              aside = aside.concat('</div>');
+            }
+          }
+        });
+
+        // By setting the radiius to 1500 I get the peak of Hekla
+        var radius = 1500;
+        // In case the status is OK, which means the pano was found, compute the
+        // position of the streetview image, then calculate the heading, then get a
+        // panorama from that and set the options
+        var getStreetView = function(data, status) {
+          if (status == google.maps.StreetViewStatus.OK) {
+            var nearStreetViewLocation = data.location.latLng;
+            var heading = google.maps.geometry.spherical
+              .computeHeading(nearStreetViewLocation, marker.position);
+            this.setContent('<div id="info-window">'+title+'<div>'+pano+aside+'</div></div>');
+            var panoramaOptions = {
+              position: nearStreetViewLocation,
+              pov: {
+                heading: heading,
+                pitch: 20
+              }
+            };
+            var panorama = new google.maps
+              .StreetViewPanorama($('#pano')[0], panoramaOptions);
+          } else {
+            this.setContent('<div>' + marker.title + '</div>' +
+              '<div>No Street View Found</div>');
+          }
+        }.bind(infowindow);
+        // Use streetview service to get the closest streetview image within
+        // 50 meters of the markers position
+        this.streetViewService.getPanoramaByLocation(marker.position, radius, getStreetView);
+
+      }
+      infowindow.open(this.map, marker);
+    }.bind(obj);
+
+    // Init Markers
     obj.markers = ko.observableArray([]);
     obj.registerBounds();
+    var defaultIcon = makeMarkerIcon('585858');
+    var highlightIcon = makeMarkerIcon('A61103');
     var l, ls, len, position, title, marker;
     ls = loadedJson.locations;
     len = ls.length;
@@ -61,30 +136,36 @@ var googleMapInit = (async function(){
       l = ls[i];
       position = l.location;
       title = l.title;
-      marker = new Marker(position, i, title);
+      marker = new Marker(position, i, defaultIcon, title);
       obj.markers.push(marker);
       obj.extendBounds(marker);
       marker.addListener('click', function() {
-        setInfoWindowContent(this, obj.infowindow);
+        bounceMarker(this);
+        obj.setInfoWindowContent(this);
+      });
+      marker.addListener('mouseover', function() {
+        this.setIcon(highlightIcon);
+      });
+      marker.addListener('mouseout', function() {
+        this.setIcon(defaultIcon);
       });
     }
     obj.fitBounds();
 
     // Toggles showing of all listings
-    obj.listings = ko.observable(false);
-    obj.showListings = function () {
+    obj.showListings = function (visible = true) {
       obj.selectedLocation(null);
       var mark;
       var len = obj.markers().length;
       obj.registerBounds();
       for(var i = 0; i < len; i++){
         mark = obj.markers()[i];
-        obj.showListing(mark, obj.map);
+        obj.showListing(mark, obj.map, visible);
       }
       obj.fitBounds();
     };
-    obj.showListing = function(marker, map) {
-      marker.setMap(map);
+    obj.showListing = function(marker, map, visible= true) {
+      marker.setMap(visible?map:null);
       this.extendBounds(marker);
       marker.setAnimation(google.maps.Animation.DROP);
     }.bind(obj);
@@ -95,145 +176,84 @@ var googleMapInit = (async function(){
       }
     };
 
-    // Helper for listings text
-    obj.toggleListingText = function() {
-      var $togList = $('#toggle-listings');
-      var currentText = $togList.val().indexOf('Show') > -1 ? 'Show' : 'Hide';
-      var replacementText = currentText === 'Show' ? 'Hide' : 'Show';
-      $togList.val($togList.val().replace(currentText, replacementText));
+    obj.zoomToListings = function(){
+      obj.infowindow.close();
+      obj.searchLocation('');
+      obj.showListings();
     };
-    obj.toggleListings = ko.computed(function(value){
-      if(obj.listings()){
-        obj.toggleListingText();
-        obj.showListings();
-      }else {
-        obj.toggleListingText();
-        obj.hideListings();
-      }
-    });
 
-    // Zoom
-    var zoomAutocomplete = new google.maps.places.Autocomplete(
-    document.getElementById('zoom-to-area-text'));
-    zoomAutocomplete.bindTo('bounds', obj.map);
-    document.getElementById('zoom-to-area').addEventListener('click', function() {
-      obj.zoomToArea();
-    });
+    obj.searchLocation = ko.observable('');
 
-    // This function takes the input value in the find nearby area text input
-    // locates it, and then zooms into that area. This is so that the user can
-    // show all listings, then decide to focus on one area of the map.
-    obj.zoomToArea =  function() {
-      // Initialize the geocoder.
-      var geocoder = new google.maps.Geocoder();
-      // Get the address or place that the user entered.
-      var address = document.getElementById('zoom-to-area-text').value;
-      // Make sure the address isn't blank.
-      if (address == '') {
-        window.alert('You must enter an area, or address.');
-      } else {
-        // Geocode the address/area entered to get the center. Then, center the map
-        // on it and zoom in
+    obj.filter = function() {
+      var term = this.searchLocation().toLowerCase();
+      var title, result;
+      obj.registerBounds();
+      var filterResult = ko.utils.arrayFilter(this.markers(), function(marker) {
+          title = marker.title.toLowerCase();
+          result = (title.search(term) >= 0);
+          if (result){
+            marker.setMap(obj.map);
+            obj.extendBounds(marker);
+          } else {
+            marker.setMap(null);
+          }
 
-        // TODO: Returning partial matches and zooming to bad locations
-        geocoder.geocode(
-          { address: address,
-            componentRestrictions: { country: 'IS'}
-          }, function(results, status) {
-            if (status == google.maps.GeocoderStatus.OK) {
-              obj.map.setCenter(results[0].geometry.location);
-              obj.map.setZoom(12);
-            } else {
-              window.alert('We could not find that location - try entering a more' +
-                  ' specific place.');
-            }
-          });
-        }
-      }
+          return result;
+      });
+      obj.fitBounds();
+      if(filterResult.length === 1) obj.map.setZoom(12);
+      if(filterResult.length === 0) obj.showListings(false);
+      return filterResult;
+    }.bind(obj);
 
+    // Searches for what user typed in the input bar using the markers array.
+    // Only displaying the exact item result the user typed.
+    obj.filteredList = ko.computed( function() {
+      obj.infowindow.close();
+      return obj.filter()
+    }, obj);
+
+    obj.selectFilterLocation = function(marker) {
+      obj.selectedLocation(null);
+      obj.showListing(marker, obj.map);
+      obj.filter();
+      obj.map.panTo(marker.position);
+      obj.setInfoWindowContent(marker);
+      bounceMarker(marker);
+    }
 
     ko.applyBindings(obj);
+
     return obj;
   })();
 
 }.bind(this));
 
-var Marker = function(position, id, title = "") {
+var Marker = function(position, id, icon, title = "") {
   return new google.maps.Marker({
     map: null,
     position: position,
     title: title,
     animation: google.maps.Animation.DROP,
+    icon: icon,
     id: id
   });
 };
 
-setInfoWindowContent = async function (marker, infowindow) {
-  if (infowindow.marker != marker) {
-    infowindow.marker = marker;
-    var title = '<h4 id="title">%data%</h4>';
-    var pano = '<div id="pano"></div>';
-    var aside = '<div id="aside">';
-    //
-    title = title.replace('%data%', marker.title);
-    //
-    var wikiRequestTimeout = setTimeout(function() {
-      aside = "<div>failed to get wikipedia resources</div>";
-      infowindow.setContent('<div id="info-window">'+title+'<div>'+pano+aside+'</div></div>');
-    }, 2500);
+function makeMarkerIcon(markerColor) {
+  var markerImage = new google.maps.MarkerImage(
+    'http://chart.googleapis.com/chart?chst=d_map_spin&chld=1.15|0|'+ markerColor +
+    '|40|_|%E2%80%A2',
+    new google.maps.Size(21, 34),
+    new google.maps.Point(0, 0),
+    new google.maps.Point(10, 34),
+    new google.maps.Size(21,34));
+  return markerImage;
+}
 
-    // Await the wiki
-    await $.ajax('https://en.wikipedia.org/w/api.php?action=opensearch&search='+marker.title+'&format=json',
-    {
-      dataType: "jsonp",
-      success: function (result){
-        var response = result[1];
-        if(response && response.length !== 0){
-          clearTimeout(wikiRequestTimeout);
-          response.forEach(function(article){
-            var url = 'http://en.wikipedia.org/wiki/'+article;
-            aside = aside.concat('<li><a href="'+url+'">'+article+'</a></li>');
-          });
-          aside = aside.concat('</div>');
-        }
-      }
-    });
-
-    // Street View
-    var streetViewService = new google.maps.StreetViewService();
-    // By setting the radiius to 1500 I get the peak of Hekla
-    var radius = 1500;
-    // In case the status is OK, which means the pano was found, compute the
-    // position of the streetview image, then calculate the heading, then get a
-    // panorama from that and set the options
-    function getStreetView(data, status) {
-      if (status == google.maps.StreetViewStatus.OK) {
-        var nearStreetViewLocation = data.location.latLng;
-        var heading = google.maps.geometry.spherical
-          .computeHeading(nearStreetViewLocation, marker.position);
-        infowindow.setContent('<div id="info-window">'+title+'<div>'+pano+aside+'</div></div>');
-        var panoramaOptions = {
-          position: nearStreetViewLocation,
-          pov: {
-            heading: heading,
-            pitch: 20
-          }
-        };
-        var panorama = new google.maps
-          .StreetViewPanorama($('#pano')[0], panoramaOptions);
-      } else {
-        infowindow.setContent('<div>' + marker.title + '</div>' +
-          '<div>No Street View Found</div>');
-      }
-    }
-    // Use streetview service to get the closest streetview image within
-    // 50 meters of the markers position
-    streetViewService.getPanoramaByLocation(marker.position, radius, getStreetView);
-
-    infowindow.addListener('closeclick', function() {
-      infowindow.marker = null;
-    });
-    infowindow.open(map, marker);
-
-  }
+function bounceMarker(marker) {
+  marker.setAnimation(google.maps.Animation.BOUNCE);
+  setTimeout(() => {
+    marker.setAnimation(null);
+  }, 750);
 }

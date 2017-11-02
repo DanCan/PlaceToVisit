@@ -6,13 +6,14 @@
   <style type="text/css">
     html, body { height: 100%; margin: 0; padding: 0; }
     hr { background: #89d7ed; height: 1px; margin: 20px 0 20px 0; border: none; }
-    #map { bottom:0px; height: 100%; left: 300px; position: absolute; right: 0px; }
-    #toggle-listings { width: 100px; }
-    #zoom-to-area-text { right: 300px; }
+    #title { text-align: center; }
+    #map { bottom:0px; height: 100%; left: 270 ; position: absolute; right: 0px; }
+    #toggle-listings { display: block; width: 100%; margin-bottom: 12px; }
+    #zoom-to-area-text, #locations { width: 100%; }
     #info-window { width: 400px; height: 250px; }
     #pano { display: inline-block; width: 200px; height: 200px; }
-    #aside { position: absolute; display: inline-block; padding: 0 12px; }
-    .horis-div { margin: 8px 0; }
+    #aside { position: absolute; display: inline-block; padding-left: 6px; padding-right: 12px; min-width: 256px; }
+    #location { cursor: pointer; }
   </style>
 
   <!-- libs -->
@@ -25,10 +26,9 @@
 
 </head>
 <body>
-  <div>
+  <div id="aside">
     <h1 id="title">Iceland</h1>
-    <input id="toggle-listings" type="button" data-bind="toggleClick: listings" value="Hide All Listings" >
-    <span class="horis-div">|</span>
+    <input id="toggle-listings" type="button" data-bind="click: zoomToListings" value="Zoom To All Locations" >
     <!-- ko if: markers-->
     <select id="locations" data-bind="options: markers, optionsText: 'title', value: selectedLocation,  optionsCaption: 'Choose...'">
     </select>
@@ -36,8 +36,10 @@
 
     <hr>
     <div>
-      <input id="zoom-to-area-text" type="text" placeholder="Enter your favorite area!">
-      <input id="zoom-to-area" type="button" value="Zoom">
+      <input id="zoom-to-area-text" type="text" placeholder="Filter for a location!" data-bind="textInput: searchLocation, valueUpdate: 'afterkeydown'">
+      <ul id="results" data-bind="foreach: filteredList">
+          <li id="location" data-bind="text: title, click: $parent.selectFilterLocation"></li>
+      </ul>
     </div>
   </div>
   <div id="map"></div>
