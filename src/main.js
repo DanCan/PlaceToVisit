@@ -68,7 +68,7 @@ var InitApp = function(){
   }
 
   var wikiError = function (err, data1) {
-    console.log('Error', err, data1);
+    loadedJson[this.title] = "<div>Wikipedia Error. Please try again.</div><div>"+err+"</div>";
   }
 
   // Pre load wiki data
@@ -80,7 +80,7 @@ var InitApp = function(){
     {
       dataType: "jsonp",
       success: wikiSuccess.bind(loc, wikiTimeOutHandle),
-      error: wikiError
+      error: wikiError.bind(loc)
     });
 
   }
@@ -92,6 +92,14 @@ var InitApp = function(){
       zoom: 7,
       styles: null,
       mapTypeControl: false
+    });
+
+    //
+    google.maps.event.addDomListener(window, 'resize', function() {
+      obj.fitBounds();
+      if (obj.infowindow.marker){
+        obj.map.panTo(obj.infowindow.marker.position);
+      }
     });
 
     // Quick functions for creating bounds
@@ -140,7 +148,7 @@ var InitApp = function(){
 
     // Init Window and Services
     var pano = '<div id="pano"></div>';
-    var asideStart = '<div id="aside">';
+    var asideStart = '<div id="info-window-right">';
     var asideEnd = '</div>';
     obj.infowindow = new google.maps.InfoWindow({ maxWidth: 525 });
     obj.infowindow.addListener('closeclick', function() {
@@ -300,7 +308,7 @@ function bounceMarker(marker) {
   marker.setAnimation(google.maps.Animation.BOUNCE);
   setTimeout(() => {
     marker.setAnimation(null);
-  }, 750);
+  }, 700);
 }
 
 // Error if google doens't load

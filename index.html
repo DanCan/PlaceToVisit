@@ -4,15 +4,15 @@
   <title>A place I would like to visit - Iceland.</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
 
-  <!-- style -->
-  <link href="css/style.css" rel="stylesheet">
+  <!-- style differed -->
+  <link href="css/style.css" rel="stylesheet" media="bogus">
 
   <!-- data -->
   <link rel="manifest" src="src/json/mapStyle.json"></script>
 
 </head>
 <body>
-  <div id="aside">
+  <div id="left-margin">
     <h1 id="title">Iceland</h1>
     <input id="toggle-listings" type="button" data-bind="click: zoomToListings" value="Zoom To All Locations" >
     <!-- ko if: markers-->
@@ -29,7 +29,9 @@
     </div>
   </div>
   <div id="map"></div>
-
+ 
+  <!-- style -->
+  <link href="css/style.css" rel="stylesheet">
   <!-- libs -->
   <script type="text/javascript" src="node_modules/knockout/build/output/knockout-latest.js"></script>
   <script type="text/javascript" src="src/helper/koHelper.js"></script>
