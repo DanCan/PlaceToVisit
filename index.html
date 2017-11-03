@@ -1,25 +1,11 @@
+<!DOCTYPE html>
 <html>
 <head>
   <title>A place I would like to visit - Iceland.</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
 
   <!-- style -->
-  <style type="text/css">
-    html, body { height: 100%; margin: 0; padding: 0; }
-    hr { background: #89d7ed; height: 1px; margin: 20px 0 20px 0; border: none; }
-    #title { text-align: center; }
-    #map { bottom:0px; height: 100%; left: 270 ; position: absolute; right: 0px; }
-    #toggle-listings { display: block; width: 100%; margin-bottom: 12px; }
-    #zoom-to-area-text, #locations { width: 100%; }
-    #info-window { width: 380px; height: 250px; }
-    #pano { display: inline-block; width: 200px; height: 200px; }
-    #aside { display: inline-block; margin-left: 28px; }
-    #location { cursor: pointer; }
-  </style>
-
-  <!-- libs -->
-  <script type="text/javascript" src="node_modules/knockout/build/output/knockout-latest.js"></script>
-  <script type="text/javascript" src="src/helper/koHelper.js"></script>
-  <script type="text/javascript"  src="https://code.jquery.com/jquery-3.2.1.min.js"></script>
+  <link href="css/style.css" rel="stylesheet">
 
   <!-- data -->
   <link rel="manifest" src="src/json/mapStyle.json"></script>
@@ -44,11 +30,15 @@
   </div>
   <div id="map"></div>
 
+  <!-- libs -->
+  <script type="text/javascript" src="node_modules/knockout/build/output/knockout-latest.js"></script>
+  <script type="text/javascript" src="src/helper/koHelper.js"></script>
+  <script type="text/javascript" src="https://code.jquery.com/jquery-3.2.1.min.js"></script>
   <!-- main -->
   <script type="text/javascript" src="src/main.js"></script>
   <!-- map -->
   <script async defer
-    src="https://maps.googleapis.com/maps/api/js?libraries=places,geometry?key=AIzaSyDS40-0C15e1ODE5HQSyGz3Gbbs3VtmcSc&v=3&callback=googleMapInit&region=IS">
+    src="https://maps.googleapis.com/maps/api/js?libraries=places,geometry?key=AIzaSyDS40-0C15e1ODE5HQSyGz3Gbbs3VtmcSc&v=3&callback=googleMapInit&region=IS" onerror="errorLoadingMap()">
   </script>
 </body>
 </html>

@@ -1,0 +1,23 @@
+{
+  "name": "placetovisit",
+  "version": "1.0.0",
+  "description": "Iceland",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/DanCan/PlaceToVisit.git"
+  },
+  "keywords": [],
+  "author": "Dan Cannova",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/DanCan/PlaceToVisit/issues"
+  },
+  "homepage": "https://github.com/DanCan/PlaceToVisit#readme",
+  "dependencies": {
+    "knockout": "^3.4.2"
+  }
+}

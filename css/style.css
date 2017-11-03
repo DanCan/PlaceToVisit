@@ -1,0 +1,10 @@
+html, body { height: 100%; margin: 0; padding: 0; }
+hr { background: #89d7ed; height: 1px; margin: 20px 0 20px 0; border: none; }
+#title { text-align: center; }
+#map { bottom:0px; height: 100%; left: 270 ; position: absolute; right: 0px; }
+#toggle-listings { display: block; width: 100%; margin-bottom: 12px; }
+#zoom-to-area-text, #locations { width: 100%; }
+#info-window { width: 380px; height: 250px; }
+#pano { display: inline-block; width: 200px; height: 200px; }
+#aside { display: inline-block; margin-left: 28px; }
+#location { cursor: pointer; }

@@ -3,21 +3,20 @@ var ViewModel;
 var Load = {
   JSON: false,
   GOOGLE: false
-}
+};
 
 var InitviewModel = function(msg) {
   var keys = Object.keys(Load);
   var waitfor = keys.length;
   var total = 0;
-  for( x of keys ){
+  for(var x of keys ){
     total+=Load[x];
-    console.log(msg, Load[x], total);
   }
 
   if(waitfor === total){
     InitApp();
   }
-}
+};
 
 // Key value pairing of json to load
 var jsonToBeLoaded = [
@@ -30,7 +29,7 @@ var jsonFail = function(err) { $('#title').text("Error Loading '"+this+"' JSON")
 
 (async function(){
   // Race condition: Might not be available when maps initializes
-  for (json of jsonToBeLoaded) {
+  for (var json of jsonToBeLoaded) {
     loadedJson[json.name] = "";
     await $.getJSON(json.file)
       .done( saveJSON.bind(json.name) )
@@ -42,35 +41,46 @@ var jsonFail = function(err) { $('#title').text("Error Loading '"+this+"' JSON")
 
 }.bind(this))();
 
-var googleMapInit = ( function() {
+var googleMapInit = function() {
   Load.GOOGLE = true;
   InitviewModel('goog');
-});
+};
+
+
 
 var InitApp = function(){
-  // Pre load wiki data
-  for (loc of loadedJson.locations){
-    var wikiLink = 'https://en.wikipedia.org/w/api.php?action=opensearch&search='+loc.title+'&format=json';
-    var wikiRequestTimeout = setTimeout(function() {
+
+  var wikiRequestTimeout = function() {
+    return setTimeout(function() {
       loadedJson[this.title] = "<div>failed to get wikipedia resources</div>";
-    }.bind(loc), 2500);
+    }.bind(this), 2500);
+  }
+
+  var wikiSuccess = function (_wikiRequestTimeout, response, result){
+    var reply = response[1];
+    if(reply && reply.length !== 0){
+      clearTimeout(_wikiRequestTimeout);
+      reply.forEach(function(article){
+        var url = 'http://en.wikipedia.org/wiki/'+article;
+        loadedJson[this.title] = '<li><a href="'+url+'">'+article+'</a></li>';
+      }.bind(this));
+    }
+  }
+
+  var wikiError = function (err, data1) {
+    console.log('Error', err, data1);
+  }
+
+  // Pre load wiki data
+  for (var loc of loadedJson.locations){
+    var wikiLink = 'https://en.wikipedia.org/w/api.php?action=opensearch&search='+loc.title+'&format=json';
+    var wikiTimeOutHandle = wikiRequestTimeout.bind(loc);
     // Await the wiki
     $.ajax(wikiLink,
     {
       dataType: "jsonp",
-      success: function (_wikiRequestTimeout, response, result){
-        var reply = response[1];
-        if(reply && reply.length !== 0){
-          clearTimeout(_wikiRequestTimeout);
-          reply.forEach(function(article){
-            var url = 'http://en.wikipedia.org/wiki/'+article;
-            loadedJson[this.title] = '<li><a href="'+url+'">'+article+'</a></li>';
-          }.bind(this));
-        }
-      }.bind(loc, wikiRequestTimeout),
-      error: function (err, data1) {
-        console.log('Error', err, data1);
-      }
+      success: wikiSuccess.bind(loc, wikiTimeOutHandle),
+      error: wikiError
     });
 
   }
@@ -102,6 +112,12 @@ var InitApp = function(){
     }, obj);
 
     // Init Markers
+    var markerClick = function() {
+      bounceMarker(this);
+      obj.setInfoWindowContent(this);
+    };
+    var markerOver = function() { this.setIcon(highlightIcon); };
+    var markerOut = function() { this.setIcon(defaultIcon); };
     obj.markers = ko.observableArray([]);
     obj.registerBounds();
     var defaultIcon = makeMarkerIcon('585858');
@@ -116,30 +132,23 @@ var InitApp = function(){
       marker = new Marker(position, i, defaultIcon, title);
       obj.markers.push(marker);
       obj.extendBounds(marker);
-      marker.addListener('click', function() {
-        bounceMarker(this);
-        obj.setInfoWindowContent(this);
-      });
-      marker.addListener('mouseover', function() {
-        this.setIcon(highlightIcon);
-      });
-      marker.addListener('mouseout', function() {
-        this.setIcon(defaultIcon);
-      });
+      marker.addListener('click', markerClick);
+      marker.addListener('mouseover', markerOver);
+      marker.addListener('mouseout', markerOut);
     }
     obj.fitBounds();
 
     // Init Window and Services
     var pano = '<div id="pano"></div>';
     var asideStart = '<div id="aside">';
-    var asideEnd = '</div>'
+    var asideEnd = '</div>';
     obj.infowindow = new google.maps.InfoWindow({ maxWidth: 525 });
     obj.infowindow.addListener('closeclick', function() {
       obj.infowindow.marker = null;
     });
     obj.streetViewService = new google.maps.StreetViewService();
 
-    var getStreetView = function(data, status) {
+    var setInfoWindowAndPanorama = function(data, status) {
       if (status == google.maps.StreetViewStatus.OK) {
         var streetViewLocation = data.location.latLng;
         var direction = google.maps.geometry.spherical
@@ -176,7 +185,7 @@ var InitApp = function(){
         infowindow.marker = marker;
         // By setting the radiius to 1500 I get the peak of Hekla
         var radius = 1500;
-        this.streetViewService.getPanoramaByLocation(marker.position, radius, getStreetView);
+        this.streetViewService.getPanoramaByLocation(marker.position, radius, setInfoWindowAndPanorama);
       }
       infowindow.open(this.map, marker);
     }.bind(obj);
@@ -292,4 +301,9 @@ function bounceMarker(marker) {
   setTimeout(() => {
     marker.setAnimation(null);
   }, 750);
+}
+
+// Error if google doens't load
+function errorHandlingMap() {
+    $('#map').html('Google Maps failed to load.');
 }

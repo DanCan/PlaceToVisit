@@ -2,13 +2,16 @@
 
 ### Getting started
 
-1. Check out the repository
-2. !NAVIGATE TO THE DIST FOLDER!
-3. To inspect the site on your phone, you can run a local server
+1. Get the libs
+
+  -Uses npm: run to get libs
+  -`npm i`
+
+2. Run simple server
 
   ```bash
   $> cd /path/to/your-project-folder
   $> python -m SimpleHTTPServer 8080
   ```
 
-4. Open a browser and visit localhost:8080
+3. Open a browser and visit localhost:8080
