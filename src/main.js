@@ -1,26 +1,82 @@
 
 var ViewModel;
-var googleMapInit = (async function(){
+var Load = {
+  JSON: false,
+  GOOGLE: false
+}
 
-  // Key value pairing of json to load
-  var jsonToBeLoaded = [
-    { name: "styles", file: 'src/json/mapStyle2.json'},
-    { name: "locations", file: 'src/json/locations.json'},
-  ];
-  var loadedJson = {};
-  var getStyle = function(data) {  loadedJson[this] = data;  };
-  var jsonFail = function(err) { $('#title').text("Error Loading '"+this+"' JSON"); throw err; };
+var InitviewModel = function(msg) {
+  var keys = Object.keys(Load);
+  var waitfor = keys.length;
+  var total = 0;
+  for( x of keys ){
+    total+=Load[x];
+    console.log(msg, Load[x], total);
+  }
+
+  if(waitfor === total){
+    InitApp();
+  }
+}
+
+// Key value pairing of json to load
+var jsonToBeLoaded = [
+  { name: "styles", file: 'src/json/mapStyle2.json'},
+  { name: "locations", file: 'src/json/locations.json'},
+];
+var loadedJson = {};
+var saveJSON = function(data) {  loadedJson[this] = data;  };
+var jsonFail = function(err) { $('#title').text("Error Loading '"+this+"' JSON"); throw err; };
+
+(async function(){
+  // Race condition: Might not be available when maps initializes
   for (json of jsonToBeLoaded) {
     loadedJson[json.name] = "";
     await $.getJSON(json.file)
-      .done( getStyle.bind(json.name) )
+      .done( saveJSON.bind(json.name) )
       .fail( jsonFail.bind(json.name) );
   }
 
-  // The network for this maps app
-  ViewModel = await ( async function () {
-    var obj = {};
+  Load.JSON = true;
+  InitviewModel('json');
 
+}.bind(this))();
+
+var googleMapInit = ( function() {
+  Load.GOOGLE = true;
+  InitviewModel('goog');
+});
+
+var InitApp = function(){
+  // Pre load wiki data
+  for (loc of loadedJson.locations){
+    var wikiLink = 'https://en.wikipedia.org/w/api.php?action=opensearch&search='+loc.title+'&format=json';
+    var wikiRequestTimeout = setTimeout(function() {
+      loadedJson[this.title] = "<div>failed to get wikipedia resources</div>";
+    }.bind(loc), 2500);
+    // Await the wiki
+    $.ajax(wikiLink,
+    {
+      dataType: "jsonp",
+      success: function (_wikiRequestTimeout, response, result){
+        var reply = response[1];
+        if(reply && reply.length !== 0){
+          clearTimeout(_wikiRequestTimeout);
+          reply.forEach(function(article){
+            var url = 'http://en.wikipedia.org/wiki/'+article;
+            loadedJson[this.title] = '<li><a href="'+url+'">'+article+'</a></li>';
+          }.bind(this));
+        }
+      }.bind(loc, wikiRequestTimeout),
+      error: function (err, data1) {
+        console.log('Error', err, data1);
+      }
+    });
+
+  }
+
+  ViewModel = (function() {
+    var obj = {};
     obj.map = new google.maps.Map(document.getElementById('map'), {
       center: { lat: 65.0, lng: -18.9 },
       zoom: 7,
@@ -29,17 +85,11 @@ var googleMapInit = (async function(){
     });
 
     // Quick functions for creating bounds
-    obj.registerBounds = function() {
-      obj.bounds = new google.maps.LatLngBounds();
-    }
-    obj.extendBounds = function(marker) {
-      obj.bounds.extend(marker.position);
-    }
-    obj.fitBounds = function(map){
-      map.fitBounds(this.bounds);
+    obj.registerBounds = function() { obj.bounds = new google.maps.LatLngBounds(); }
+    obj.extendBounds = function(marker) { obj.bounds.extend(marker.position); }
+    obj.fitBounds = function(map) { map.fitBounds(this.bounds); }.bind(obj, obj.map);
 
-    }.bind(obj, obj.map);
-
+    // Using DROP DOWN for filtering markers
     obj.selectedLocation = ko.observable();
     obj.selectedLocation.subscribe( function(selectedMarker) {
       if(!selectedMarker) return;
@@ -50,79 +100,6 @@ var googleMapInit = (async function(){
       this.map.setZoom(12);
       this.setInfoWindowContent(selectedMarker);
     }, obj);
-
-    // Init Window
-    obj.infowindow = new google.maps.InfoWindow({ maxWidth: 525 });
-    obj.infowindow.addListener('closeclick', function() {
-      obj.infowindow.marker = null;
-    });
-
-    obj.streetViewService = new google.maps.StreetViewService();
-
-    obj.setInfoWindowContent = async function (marker) {
-      var infowindow = this.infowindow;
-      if (infowindow.marker != marker) {
-        infowindow.marker = marker;
-        var title = '<h4 id="title">%data%</h4>';
-        var pano = '<div id="pano"></div>';
-        var aside = '<div id="aside">';
-        //
-        title = title.replace('%data%', marker.title);
-        //
-        var wikiRequestTimeout = setTimeout(function() {
-          aside = "<div>failed to get wikipedia resources</div>";
-          infowindow.setContent('<div id="info-window">'+title+'<div>'+pano+aside+'</div></div>');
-        }, 2500);
-
-        // Await the wiki
-        await $.ajax('https://en.wikipedia.org/w/api.php?action=opensearch&search='+marker.title+'&format=json',
-        {
-          dataType: "jsonp",
-          success: function (result){
-            var response = result[1];
-            if(response && response.length !== 0){
-              clearTimeout(wikiRequestTimeout);
-              response.forEach(function(article){
-                var url = 'http://en.wikipedia.org/wiki/'+article;
-                aside = aside.concat('<li><a href="'+url+'">'+article+'</a></li>');
-              });
-              aside = aside.concat('</div>');
-            }
-          }
-        });
-
-        // By setting the radiius to 1500 I get the peak of Hekla
-        var radius = 1500;
-        // In case the status is OK, which means the pano was found, compute the
-        // position of the streetview image, then calculate the heading, then get a
-        // panorama from that and set the options
-        var getStreetView = function(data, status) {
-          if (status == google.maps.StreetViewStatus.OK) {
-            var nearStreetViewLocation = data.location.latLng;
-            var heading = google.maps.geometry.spherical
-              .computeHeading(nearStreetViewLocation, marker.position);
-            this.setContent('<div id="info-window">'+title+'<div>'+pano+aside+'</div></div>');
-            var panoramaOptions = {
-              position: nearStreetViewLocation,
-              pov: {
-                heading: heading,
-                pitch: 20
-              }
-            };
-            var panorama = new google.maps
-              .StreetViewPanorama($('#pano')[0], panoramaOptions);
-          } else {
-            this.setContent('<div>' + marker.title + '</div>' +
-              '<div>No Street View Found</div>');
-          }
-        }.bind(infowindow);
-        // Use streetview service to get the closest streetview image within
-        // 50 meters of the markers position
-        this.streetViewService.getPanoramaByLocation(marker.position, radius, getStreetView);
-
-      }
-      infowindow.open(this.map, marker);
-    }.bind(obj);
 
     // Init Markers
     obj.markers = ko.observableArray([]);
@@ -151,6 +128,58 @@ var googleMapInit = (async function(){
       });
     }
     obj.fitBounds();
+
+    // Init Window and Services
+    var pano = '<div id="pano"></div>';
+    var asideStart = '<div id="aside">';
+    var asideEnd = '</div>'
+    obj.infowindow = new google.maps.InfoWindow({ maxWidth: 525 });
+    obj.infowindow.addListener('closeclick', function() {
+      obj.infowindow.marker = null;
+    });
+    obj.streetViewService = new google.maps.StreetViewService();
+
+    var getStreetView = function(data, status) {
+      if (status == google.maps.StreetViewStatus.OK) {
+        var streetViewLocation = data.location.latLng;
+        var direction = google.maps.geometry.spherical
+          .computeHeading(streetViewLocation, marker.position);
+
+        var title = '<h4 id="title">%data%</h4>';
+        // I wish i didn't have to replace here and could use a ko.observable
+        title = title.replace('%data%', this.marker.title);
+        // This setContent coudln't get ko to bind title value
+        this.setContent('<div id="info-window">'+title+'<div style="display: flex;">'+pano+asideStart+loadedJson[this.marker.title]+asideEnd+'</div></div>');
+
+        var panoramaOptions = {
+          position: streetViewLocation,
+          pov: {
+            heading: direction,
+            pitch: 20
+          }
+        };
+
+        // Init: I couldn't find a way to abstract this
+        var panorama = new google.maps
+          .StreetViewPanorama($('#pano')[0], panoramaOptions);
+
+      } else {
+        this.setContent('<div>' + marker.title + '</div>' +
+          '<div>No Street View Found</div>');
+      }
+    }.bind(obj.infowindow);
+
+    // Sets up info window
+    obj.setInfoWindowContent = function (marker) {
+      var infowindow = this.infowindow;
+      if (infowindow.marker != marker) {
+        infowindow.marker = marker;
+        // By setting the radiius to 1500 I get the peak of Hekla
+        var radius = 1500;
+        this.streetViewService.getPanoramaByLocation(marker.position, radius, getStreetView);
+      }
+      infowindow.open(this.map, marker);
+    }.bind(obj);
 
     // Toggles showing of all listings
     obj.showListings = function (visible = true) {
@@ -184,6 +213,7 @@ var googleMapInit = (async function(){
 
     obj.searchLocation = ko.observable('');
 
+    // Filters out search term
     obj.filter = function() {
       var term = this.searchLocation().toLowerCase();
       var title, result;
@@ -201,7 +231,9 @@ var googleMapInit = (async function(){
           return result;
       });
       obj.fitBounds();
+      // Don't zoom in to far
       if(filterResult.length === 1) obj.map.setZoom(12);
+      // can't find anythign? zoom back out
       if(filterResult.length === 0) obj.showListings(false);
       return filterResult;
     }.bind(obj);
@@ -213,6 +245,7 @@ var googleMapInit = (async function(){
       return obj.filter()
     }, obj);
 
+    // Selecting list items below filter
     obj.selectFilterLocation = function(marker) {
       obj.selectedLocation(null);
       obj.showListing(marker, obj.map);
@@ -227,8 +260,9 @@ var googleMapInit = (async function(){
     return obj;
   })();
 
-}.bind(this));
+}.bind(this);
 
+// creates new markers
 var Marker = function(position, id, icon, title = "") {
   return new google.maps.Marker({
     map: null,
@@ -240,6 +274,7 @@ var Marker = function(position, id, icon, title = "") {
   });
 };
 
+// creates new marker images
 function makeMarkerIcon(markerColor) {
   var markerImage = new google.maps.MarkerImage(
     'http://chart.googleapis.com/chart?chst=d_map_spin&chld=1.15|0|'+ markerColor +
@@ -251,6 +286,7 @@ function makeMarkerIcon(markerColor) {
   return markerImage;
 }
 
+// Sets a marker to bounce once then stop
 function bounceMarker(marker) {
   marker.setAnimation(google.maps.Animation.BOUNCE);
   setTimeout(() => {
