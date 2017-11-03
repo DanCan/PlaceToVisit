@@ -4,8 +4,10 @@
 
 1. Get the libs
 
+  ```bash
   -Uses npm: run to get libs
   -`npm i`
+    ```
 
 2. Run simple server
 
