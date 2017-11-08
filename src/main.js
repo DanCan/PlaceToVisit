@@ -4,7 +4,9 @@ var Load = {
   JSON: false,
   GOOGLE: false
 };
-
+var $menu = $('#menu');
+$('#menu-icon').load('../resources/svg/ic_menu_black_24px.svg');
+//
 var InitviewModel = function(msg) {
   var keys = Object.keys(Load);
   var waitfor = keys.length;
@@ -85,8 +87,39 @@ var InitApp = function(){
 
   }
 
+
   ViewModel = (function() {
     var obj = {};
+
+    $(window).on('resize', function() {
+      console.log(window.innerWidth);
+      if (window.innerWidth <= 480){
+        obj.isMobile(true);
+        return;
+      } else if (obj.isMobile()){
+        obj.isMobile(false);
+      }
+    });
+    obj.isMobile = ko.observable(window.innerWidth <= 480);
+    // TODO: Don't think this NEEDS to be a computed???
+    obj.MobileIsEnabled = ko.computed( function() {
+      console.log('MobileIsEnabled');
+      if(obj.isMobile()){
+        $menu.addClass('animOut');
+        return true
+      }
+
+      return false;
+    });
+
+    obj.menuIsOut = ko.observable(false);
+    obj.toggleAnim = ko.computed(function() {
+      if(obj.menuIsOut()){
+        $menu.removeClass('animOut').addClass('animIn');
+      }else {
+          $menu.removeClass('animIn').addClass('animOut');
+      }
+    });
     obj.map = new google.maps.Map(document.getElementById('map'), {
       center: { lat: 65.0, lng: -18.9 },
       zoom: 7,
@@ -260,7 +293,7 @@ var InitApp = function(){
     obj.filteredList = ko.computed( function() {
       obj.infowindow.close();
       return obj.filter()
-    }, obj);
+    });
 
     // Selecting list items below filter
     obj.selectFilterLocation = function(marker) {

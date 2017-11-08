@@ -5,33 +5,38 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
 
   <!-- style differed -->
-  <link href="css/style.css" rel="stylesheet" media="bogus">
+  <link href="resources/css/style.css" rel="stylesheet" media="bogus">
 
   <!-- data -->
   <link rel="manifest" src="src/json/mapStyle.json"></script>
 
 </head>
 <body>
-  <div id="left-margin">
-    <h1 id="title">Iceland</h1>
-    <input id="toggle-listings" type="button" data-bind="click: zoomToListings" value="Zoom To All Locations" >
-    <!-- ko if: markers-->
-    <select id="locations" data-bind="options: markers, optionsText: 'title', value: selectedLocation,  optionsCaption: 'Choose...'">
-    </select>
-    <!-- /ko -->
+  <div class="container">
+    <div id="menu-icon" data-bind="toggleClick: menuIsOut, visible: MobileIsEnabled"></div>
+    <div id="menu">
+      <div id="menu-content">
+        <h1 id="title">Iceland</h1>
+        <input id="toggle-listings" type="button" data-bind="click: zoomToListings" value="Zoom To All Locations" >
+        <!-- ko if: markers-->
+        <select id="locations" data-bind="options: markers, optionsText: 'title', value: selectedLocation,  optionsCaption: 'Choose...'">
+        </select>
+        <!-- /ko -->
 
-    <hr>
-    <div>
-      <input id="zoom-to-area-text" type="text" placeholder="Filter for a location!" data-bind="textInput: searchLocation, valueUpdate: 'afterkeydown'">
-      <ul id="results" data-bind="foreach: filteredList">
-          <li id="location" data-bind="text: title, click: $parent.selectFilterLocation"></li>
-      </ul>
+        <hr>
+        <div>
+          <input id="zoom-to-area-text" type="text" placeholder="Filter for a location!" data-bind="textInput: searchLocation, valueUpdate: 'afterkeydown'">
+          <ul id="results" data-bind="foreach: filteredList">
+              <li id="location" data-bind="text: title, click: $parent.selectFilterLocation"></li>
+          </ul>
+        </div>
+      </div>
     </div>
+
+    <div id="map"></div>
   </div>
-  <div id="map"></div>
- 
   <!-- style -->
-  <link href="css/style.css" rel="stylesheet">
+  <link href="resources/css/style.css" rel="stylesheet">
   <!-- libs -->
   <script type="text/javascript" src="node_modules/knockout/build/output/knockout-latest.js"></script>
   <script type="text/javascript" src="src/helper/koHelper.js"></script>
@@ -40,7 +45,7 @@
   <script type="text/javascript" src="src/main.js"></script>
   <!-- map -->
   <script async defer
-    src="https://maps.googleapis.com/maps/api/js?libraries=places,geometry?key=AIzaSyDS40-0C15e1ODE5HQSyGz3Gbbs3VtmcSc&v=3&callback=googleMapInit&region=IS" onerror="errorLoadingMap()">
+    src="https://maps.googleapis.com/maps/api/js?libraries=places,geometry?key=AIzaSyB_Vk2VGoeUKIy_5pEEGDeCYi-JonXlJ8M&v=3&callback=googleMapInit&region=IS" onerror="errorHandlingMap()">
   </script>
 </body>
 </html>

@@ -1,0 +1,67 @@
+html, body { height: 100%; margin: 0; padding: 0; }
+body, html {
+  height: 100%;
+  width: 100%;
+}
+hr { background: #89d7ed; height: 1px; margin: 20px 0 20px 0; border: none; }
+#title { text-align: center; }
+#map { width:calc(100% - 270px); height: 100%; bottom:0px; left: 270px; position: absolute; right: 0px; }
+#toggle-listings { display: block; width: 100%; margin-bottom: 12px; }
+#zoom-to-area-text, #locations { width: 100%; }
+#info-window { width: 380px; height: 250px; }
+#pano { display: inline-block; width: 200px; height: 200px; }
+#info-window-right { display: inline-block; margin-left: 8px; width: calc(100% - 200px); }
+#info-window-right li {
+  list-style: none;
+}
+#location { cursor: pointer; }
+#menu-content {
+  z-index: 1;
+  display: inline-block;
+  margin: 20px;
+}
+.container {
+  height:100%;
+  width:100%;
+}
+
+
+/* Smartphones (portrait) */
+@media only screen and (max-width: 480px) {
+  #left-margin{
+    position: absolute;
+  }
+  #map {
+    width: 100%;
+    bottom: auto;
+    left: auto;
+    right: auto;
+   }
+   #menu {
+     z-index: 1;
+     position: absolute;
+     background: WhiteSmoke;
+     border-radius: 5px;
+   }
+   #menu-icon {
+     z-index: 2;
+     width: 24px;
+     height: 24px;
+     margin: 8px;
+     padding: 8px;
+     position: absolute;
+     background: WhiteSmoke;
+     border-radius: 5px;
+   }
+   #info-window {
+      width: 280px;
+   }
+   .animOut {
+    transform: translate(-120%, 0);
+    transition: transform .76s ease-in;
+   }
+   .animIn {
+     transform: translate(0%, 0);
+     transition: transform .82s ease-out;
+   }
+}
